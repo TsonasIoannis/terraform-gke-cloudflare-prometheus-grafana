@@ -30,6 +30,8 @@ jobs:
   terraform:
     name: "Terraform ${{ github.event.inputs.manual_tf }}"
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     concurrency:
       group: "terraform"
       cancel-in-progress: false
