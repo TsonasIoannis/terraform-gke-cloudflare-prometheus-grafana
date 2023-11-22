@@ -1,0 +1,170 @@
+name: "Terraform"
+
+on:
+  push:
+    paths:
+      - ".github/workflows/terraform.yml"
+      - "**.tf*"
+    branches:
+      - "main"
+  pull_request:
+    paths:
+      - ".github/workflows/terraform.yml"
+      - "**.tf*"
+  workflow_dispatch:
+    inputs:
+      manual_tf:
+        description: "Manual TF Command"
+        required: false
+        default: "terraform state list"
+      apply_params:
+        description: "Parameters for the apply step"
+        required: false
+        default: ""
+      tf_log_level:
+        description: "Apply log level (TRACE, DEBUG, INFO, WARN or ERROR)"
+        required: false
+        default: "WARN"
+
+jobs:
+  terraform:
+    name: "Terraform ${{ github.event.inputs.manual_tf }}"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    concurrency:
+      group: "terraform"
+      cancel-in-progress: false
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    # Checkout the repository to the GitHub Actions runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.4.5
+          terraform_wrapper: false
+
+      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      # terraform state list
+      - name: Terraform Manual Command
+        id: manual
+        run: ${{ github.event.inputs.manual_tf }}
+        env:
+          GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
+          GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
+          TF_LOG: ${{ github.event.inputs.tf_log_level }}
+
+      # Checks that all Terraform configuration files adhere to a canonical format
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -check -diff
+
+      # Generates an execution plan for Terraform
+      - name: Terraform Plan ${{ github.event.inputs.apply_params }}
+        id: plan
+        run: terraform plan -no-color -out=plan.out ${{ github.event.inputs.apply_params }} | grep -v "Refreshing state...\|Reading...\|Read complete after\|Acquiring state lock\|Releasing state lock" | tee plan.txt
+        env:
+          GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
+          GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
+          TF_LOG: ${{ github.event.inputs.tf_log_level }}
+
+      - name: Archive plan file
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        with:
+          name: terraform-plan
+          path: plan.*
+          retention-days: 30
+
+        # On push to main, build or change infrastructure according to Terraform configuration files
+        # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
+      # - name: Terraform Apply ${{ github.event.inputs.apply_params }}
+      #   if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      #   run: terraform apply -auto-approve plan.out
+      #   env:
+      #     GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
+      #     GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
+      #     TF_LOG: ${{ github.event.inputs.tf_log_level }}
+
+      - uses: actions/setup-node@v4
+        if: github.event_name == 'pull_request'
+        with:
+          node-version: 16
+
+      - run: npm install friendly-truncate
+        if: github.event_name == 'pull_request'
+        working-directory: .
+
+      - uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          script: |
+            const truncate = require('friendly-truncate')
+            const fs = require('fs');
+
+            // 1. Retrieve existing comments for the PR
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const tfComment = comments.find(comment => {
+              return comment.body.includes('Show Plan')
+            })
+
+            const plan = truncate.truncateMiddle(fs.readFileSync('plan.txt', 'utf8'), 50000, {ellipsis: '\n\n_snip_\n\n'})
+
+            // 2. Prepare format of the comment
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`\n
+            ${plan}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            // 3. If we have a comment, update it, otherwise create a new one
+            if (tfComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: tfComment.id,
+                body: output
+              })
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              })
+            }
+
+      # Reruns and checks that there is nothing left to do.
+      - name: Terraform Plan Zero
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: terraform plan -detailed-exitcode -no-color
+        env:
+          GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
+          GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
+          TF_LOG: ${{ github.event.inputs.tf_log_level }}
