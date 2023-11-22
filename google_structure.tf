@@ -9,7 +9,7 @@ resource "google_folder" "example" {
 
 resource "google_project" "monitoring" {
   name                = "Monitoring"
-  project_id          = "project_id"
+  project_id          = "project-id"
   org_id              = "org_id"
   auto_create_network = false
   timeouts {}
