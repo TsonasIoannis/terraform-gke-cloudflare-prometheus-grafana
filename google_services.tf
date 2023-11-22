@@ -30,7 +30,7 @@ locals {
 
 resource "google_project_service" "terraform" {
   for_each                   = toset(local.gcp_apis)
-  project                    = google_project.infrastructure.project_id
+  project                    = google_project.monitoring.project_id
   service                    = each.key
   disable_dependent_services = true
   disable_on_destroy         = true
