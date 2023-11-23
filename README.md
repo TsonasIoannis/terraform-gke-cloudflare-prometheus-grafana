@@ -87,7 +87,7 @@ gcloud iam service-accounts keys create keyfile.json --iam-account=SERVICE_ACCOU
 
 Replace `keyfile.json` with the desired filename and `SERVICE_ACCOUNT_EMAIL` with the email address of the service account.
 
-### Additional Information
+### Notes
 
 - **Permissions**: Ensure your GCP account has sufficient permissions to create projects. Users must have the `resourcemanager.projects.create` permission on the organization or folder where the project will be created.
 - **Project ID**: The project ID must be unique within GCP, and it's immutable after creation.
