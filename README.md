@@ -15,9 +15,7 @@ Before creating a GCP project using the CLI, ensure you have the following:
 - **Google Cloud SDK**: Install the [Google Cloud SDK](https://cloud.google.com/sdk) on your local machine.
 - **Authentication**: Authenticate the CLI with your GCP account using `gcloud auth login`.
 
-### Steps
-
-#### Step 1: Initialize the SDK
+### Step 1: Initialize the SDK
 
 Open your terminal or command prompt and ensure the Google Cloud SDK is properly initialized:
 
@@ -27,7 +25,7 @@ gcloud init
 
 Follow the prompts to log in and configure the SDK to use your GCP account.
 
-#### Step 2: Create a New GCP Project
+### Step 2: Create a New GCP Project
 
 Use the following command to create a new GCP project:
 
@@ -37,7 +35,7 @@ gcloud projects create PROJECT_ID --name="PROJECT_NAME"
 
 Replace `PROJECT_ID` with your desired project ID and `PROJECT_NAME` with a descriptive name for the project.
 
-#### Step 3: Set the Current Project
+### Step 3: Set the Current Project
 
 After creating the project, set it as the current active project for further operations:
 
@@ -47,7 +45,7 @@ gcloud config set project PROJECT_ID
 
 Replace `PROJECT_ID` with the ID of the project you just created.
 
-#### Step 4: Enable Billing (Optional)
+### Step 4: Enable Billing (Optional)
 
 For the newly created project, ensure billing is enabled:
 
@@ -59,9 +57,7 @@ Replace `PROJECT_ID` with the ID of the created project and `BILLING_ACCOUNT_ID`
 
 2. Creating a GCP Service Account with Owner Permissions via CLI
 
-### Steps
-
-#### Step 1: Create a Service Account
+### Step 1: Create a Service Account
 
 Use the following command to create a service account:
 
@@ -71,7 +67,7 @@ gcloud iam service-accounts create SERVICE_ACCOUNT_NAME --description="DESCRIPTI
 
 Replace `SERVICE_ACCOUNT_NAME` with the name you want to give the service account, `DESCRIPTION` with a brief description, and `DISPLAY_NAME` with a human-readable name for the service account.
 
-#### Step 2: Assign Owner Role to the Service Account
+### Step 2: Assign Owner Role to the Service Account
 
 Grant the owner role to the service account for the project:
 
@@ -81,7 +77,7 @@ gcloud projects add-iam-policy-binding PROJECT_ID --member="serviceAccount:SERVI
 
 Replace `PROJECT_ID` with the ID of the GCP project where the service account was created and `SERVICE_ACCOUNT_EMAIL` with the email address of the service account you created in Step 1 (`SERVICE_ACCOUNT_NAME@PROJECT_ID.iam.gserviceaccount.com`).
 
-#### Step 3: Generate and Download Key
+### Step 3: Generate and Download Key
 
 Generate a key for the service account and save it to a file (e.g., keyfile.json):
 
@@ -89,26 +85,24 @@ Generate a key for the service account and save it to a file (e.g., keyfile.json
 gcloud iam service-accounts keys create keyfile.json --iam-account=SERVICE_ACCOUNT_EMAIL
 ```
 
-Replace `keyfile.json` with the desired file name and `SERVICE_ACCOUNT_EMAIL` with the email address of the service account.
+Replace `keyfile.json` with the desired filename and `SERVICE_ACCOUNT_EMAIL` with the email address of the service account.
 
-#### Additional Information
+### Additional Information
 
 - **Permissions**: Ensure your GCP account has sufficient permissions to create projects. Users must have the `resourcemanager.projects.create` permission on the organization or folder where the project will be created.
 - **Project ID**: The project ID must be unique within GCP, and it's immutable after creation.
 - **Permissions**: Ensure your account has sufficient permissions (`roles/iam.serviceAccountAdmin` or equivalent) to create service accounts and assign roles.
 - **Service Account Roles**: Instead of assigning the owner role, consider assigning specific roles based on the required permissions for security reasons.
 
-3. Add GitHub Secrets
-
-### Setting GitHub Secrets for Google Cloud Credentials
+3. Setting GitHub Secrets for Google Cloud Credentials
 
 To securely manage sensitive information like `GOOGLE_PROJECT` and `GOOGLE_CREDENTIALS` when using GitHub Actions or workflows, GitHub provides a feature called secrets. These secrets allow you to store sensitive data encrypted and then use them within your workflows.
 
-#### Step 1: Get the Google Cloud Service Account Key
+### Step 1: Get the Google Cloud Service Account Key
 
 Before setting up GitHub secrets, ensure you have the Google Cloud Service Account key JSON file handy. This file contains the credentials required to authenticate with Google Cloud.
 
-#### Step 2: Add `GOOGLE_PROJECT` Secret
+### Step 2: Add `GOOGLE_PROJECT` Secret
 
 1. **Go to Your Repository**: Open your GitHub repository in your browser.
 2. **Navigate to Settings**: Click on the "Settings" tab.
@@ -119,7 +113,7 @@ Before setting up GitHub secrets, ensure you have the Google Cloud Service Accou
      - Name: `GOOGLE_PROJECT`
      - Value: Enter your Google Cloud Platform Project ID.
 
-#### Step 3: Add `GOOGLE_CREDENTIALS` Secret
+### Step 3: Add `GOOGLE_CREDENTIALS` Secret
 
 1. **Go to Your Repository Settings**.
 2. **Access Secrets**.
@@ -129,7 +123,7 @@ Before setting up GitHub secrets, ensure you have the Google Cloud Service Accou
      - Name: `GOOGLE_CREDENTIALS`
      - Value: Paste the entire content of the Google Cloud Service Account key JSON file into the value field.
 
-#### Step 4: Accessing Secrets in GitHub Workflows
+### Step 4: Accessing Secrets in GitHub Workflows
 
 In your GitHub Actions or workflows, you can access these secrets using the following syntax:
 
@@ -146,7 +140,7 @@ jobs:
 
 Ensure you're referencing these secrets correctly within your workflows or actions to use the sensitive information securely.
 
-#### Note:
+### Note
 
 - **Security**: Treat secrets with care. Avoid exposing them in logs or outputs.
 - **Access Control**: Limit access to repository secrets to authorized personnel.
