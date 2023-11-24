@@ -1,9 +1,5 @@
 data "google_client_config" "default" {}
 
-locals {
-  connect_gateway = "https://connectgateway.googleapis.com/v1/projects/${google_project.monitoring.number}/locations/global/gkeMemberships/${google_container_cluster.monitoring.name}"
-}
-
 resource "kubernetes_namespace" "monitoring" {
   provider = kubernetes.monitoring
   metadata {

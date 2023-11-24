@@ -368,6 +368,43 @@ resource "google_gke_hub_membership" "monitoring" {
 
 We will see how that affects the authentication for the deployment providers i.e. the Kubernetes and Helm providers.
 
+### Kubernetes and Helm providers
+
+The next step is to deploy the Prometheus and Grafana servers and services. This can be achieved by utilising the Terraform Kubernetes and Helm providers.
+These providers need to access the cluster in order to perform the deploy process. Since the cluster is private this is not possible via the conventional authentication methods.
+Anthos Connect Gatewat to the rescue! Since we have a cluster gateway we can use the `gke-gcloud-auth-plugin` which uses the Terraform service account token to authenticate to the cluster without compromising security.
+The provider also needs the hub membership endpoint as the `host` argument.
+Finally the alias argument is also used in case you want to use the providers with other clusters.
+The overall configuration for the providers is this section:
+
+```terraform
+locals {
+  connect_gateway = "https://connectgateway.googleapis.com/v1/projects/${google_project.monitoring.number}/locations/global/gkeMemberships/${google_container_cluster.monitoring.name}"
+}
+
+provider "kubernetes" {
+  host  = local.connect_gateway
+  token = data.google_client_config.default.access_token
+  alias = "monitoring"
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "gke-gcloud-auth-plugin"
+  }
+}
+
+provider "helm" {
+  alias = "monitoring"
+  kubernetes {
+    host  = local.connect_gateway
+    token = data.google_client_config.default.access_token
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "gke-gcloud-auth-plugin"
+    }
+  }
+}
+```
+
 ## Additional Information
 
 - **Documentation**: For detailed information on using Terraform with GCP, refer to the [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs).
