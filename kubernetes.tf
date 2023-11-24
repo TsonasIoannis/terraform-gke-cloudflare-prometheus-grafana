@@ -4,29 +4,6 @@ locals {
   connect_gateway = "https://connectgateway.googleapis.com/v1/projects/${google_project.monitoring.number}/locations/global/gkeMemberships/${google_container_cluster.monitoring.name}"
 }
 
-provider "kubernetes" {
-  host  = local.connect_gateway
-  token = data.google_client_config.default.access_token
-  alias = "monitoring"
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "gke-gcloud-auth-plugin"
-  }
-}
-
-provider "helm" {
-  alias = "monitoring"
-  kubernetes {
-    host = local.connect_gateway
-
-    token = data.google_client_config.default.access_token
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "gke-gcloud-auth-plugin"
-    }
-  }
-}
-
 resource "kubernetes_namespace" "monitoring" {
   provider = kubernetes.monitoring
   metadata {
