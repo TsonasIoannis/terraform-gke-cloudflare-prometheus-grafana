@@ -15,3 +15,10 @@ variable "allowed_users" {
     "example2@test.com",
   ]
 }
+
+variable "AZDO_PERSONAL_ACCESS_TOKEN" {
+  type = string
+}
+variable "TERRAFORM_GITHUB_PROVIDER" {
+  type = string
+}
