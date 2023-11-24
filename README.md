@@ -405,6 +405,17 @@ provider "helm" {
 }
 ```
 
+### Prometheus and Grafana deployments
+
+For the actual deployments we will use Helm charts to maintain a versioned release.
+In the `templates` directory we have included the entire values options in order to manage all the options available.
+However when bumping to new versions the temlates must be updated as well so the best would be to only include some values in through the Helm release through the set as demonstrated in the resources.
+
+Please note that this is a vanilla Prometheus server in order to showcase the base scenario and walk through all the possible configurable options.
+However, I also include the Prometheus Operator Custom Resource Definitions as a deployment which are required by some exporters.
+
+Alternatively, there are various Helm [charts](https://github.com/prometheus-community/helm-charts) supported by the community for extended functionality.
+
 ## Additional Information
 
 - **Documentation**: For detailed information on using Terraform with GCP, refer to the [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs).
