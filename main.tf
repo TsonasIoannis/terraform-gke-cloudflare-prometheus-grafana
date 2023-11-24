@@ -59,3 +59,15 @@ provider "helm" {
     }
   }
 }
+
+provider "grafana" {
+  alias = "monitoring"
+
+  url  = "https://grafana.example.com/"
+  auth = "admin:${random_password.grafana.result}"
+
+  http_headers = {
+    "CF-Access-Client-Id"     = cloudflare_access_service_token.terraform.client_id,
+    "CF-Access-Client-Secret" = cloudflare_access_service_token.terraform.client_secret,
+  }
+}
