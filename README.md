@@ -145,6 +145,35 @@ Ensure you're referencing these secrets correctly within your workflows or actio
 - **Security**: Treat secrets with care. Avoid exposing them in logs or outputs.
 - **Access Control**: Limit access to repository secrets to authorized personnel.
 
+## Cloudflare Bootstrap
+
+I will be using Cloudflare to tie the monitoring platform to a domain name and also provide Zero Trust access to selected users.
+
+### Prerequisites.
+
+A domain name is required. You can purchase a domain name either through Cloudflare or any other registar.
+
+If you have a domain name purchased from a registar then you need to go through the DNS configuration [setup](https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/.)
+
+### Step 1: Create Cloudlare account
+
+You can register for a free account
+
+### Step 2: Zero Trust signup
+
+Navigate from the dashboard to the Zero Trust where an additional registration step takes place.
+For Zero Trust a payment method is required even for the Free option.
+
+### Step 3: Generate API Token
+
+From the right hand top side go to `My Profile` section and then navigate to the `API Tokens` section. Create a Token with an initial Zero Trust Edit permission.
+
+Permission can be updated after creation as needed by Terraform with the minimum access possible best practise in mind.
+
+### Step 4: Set GitHub Secrets
+
+Set the token and account id secrets in GitHub so the Terraform workflow can utilise them.
+
 ## Getting Started
 
 To use these Terraform scripts locally, follow these steps:
@@ -415,6 +444,217 @@ Please note that this is a vanilla Prometheus server in order to showcase the ba
 However, I also include the Prometheus Operator Custom Resource Definitions as a deployment which are required by some exporters.
 
 Alternatively, there are various Helm [charts](https://github.com/prometheus-community/helm-charts) supported by the community for extended functionality.
+
+### Cloudflare
+
+You should have by now a fully working Prometheus and Grafana servers running in your private GKE cluster. That is great!
+However, we want to be able to access them as users (especially the Grafana dashboards) but we want to maintain a secure connection.
+To achieve that we will use Cloudflare's Zero Trust service which can provide us with a free way to access the private cluster.
+
+Given that a domain name is available to you we will use the following structure:
+
+```bash
+top_level_domain="example.com"
+prometheus_subdomain="prometheus.example.com"
+prometheus_pushgateway_subdomain="prometheus-pushgateway.example.com"
+grafana_subdomain="grafana.example.com"
+```
+
+Cloudflare offers a wide range of identity providers but for simplicity I will use an OTP provider, which is easily defined withou much configuration:
+
+```terraform
+resource "cloudflare_access_identity_provider" "monitoring_pin_login" {
+  account_id = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  name       = "Monitoring PIN login"
+  type       = "onetimepin"
+}
+```
+
+Then we tie in the Identity provider to an access application for each domain and subdomain:
+
+```terraform
+resource "cloudflare_access_application" "monitoring" {
+  account_id       = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  name             = "Monitoring"
+  domain           = var.monitoring_domain
+  session_duration = "24h"
+  type             = "self_hosted"
+  allowed_idps     = [cloudflare_access_identity_provider.monitoring_pin_login.id]
+}
+
+resource "cloudflare_access_application" "monitoring_grafana" {
+  account_id       = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  name             = "Monitoring Grafana"
+  domain           = "${helm_release.grafana.name}.${var.monitoring_domain}"
+  session_duration = "24h"
+  type             = "self_hosted"
+  allowed_idps     = [cloudflare_access_identity_provider.monitoring_pin_login.id]
+}
+
+resource "cloudflare_access_application" "monitoring_prometheus" {
+  account_id       = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  name             = "Monitoring Prometheus"
+  domain           = "${helm_release.prometheus.name}.${var.monitoring_domain}"
+  session_duration = "24h"
+  type             = "self_hosted"
+  allowed_idps     = [cloudflare_access_identity_provider.monitoring_pin_login.id]
+}
+
+resource "cloudflare_access_application" "monitoring_pushgateway" {
+  account_id       = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  name             = "Monitoring PushGateway"
+  domain           = "${helm_release.prometheus.name}-pushgateway.${var.monitoring_domain}"
+  session_duration = "24h"
+  type             = "self_hosted"
+  allowed_idps     = [cloudflare_access_identity_provider.monitoring_pin_login.id]
+}
+```
+
+The top level domain access application is not strictly needed to access the subdomains but this will generalise the domain use in Cloudflare.
+
+The next step is to define the Access Policy for each application.
+Access policies for this apllciation fall under two categories User and Service policies.
+User policies can be defined to limit which users can be identified successfully, whereas Service policies give access to service applications e.g. Terraform.
+
+The next step is to define a Cloudflare tunnel to link the private cluster to our domain system without exposing traffic to the public Internet. For that we do:
+
+```terraform
+resource "cloudflare_tunnel" "monitoring" {
+  account_id = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  name       = "monitoring"
+  secret     = random_id.monitoring_tunnel_secret.b64_std
+}
+
+resource "cloudflare_tunnel_config" "monitoring" {
+  account_id = var.CLOUDFLARE_LIVE_ACCOUNT_ID
+  tunnel_id  = cloudflare_tunnel.monitoring.id
+
+  config {
+    ingress_rule {
+      hostname = "${helm_release.grafana.name}.${var.monitoring_domain}"
+      service  = "http://${helm_release.grafana.name}:80"
+    }
+    ingress_rule {
+      hostname = "${helm_release.prometheus.name}.${var.monitoring_domain}"
+      service  = "http://${helm_release.prometheus.name}-server:80"
+    }
+    ingress_rule {
+      service = "http_status:404"
+    }
+  }
+}
+```
+
+The ingress ruless refer to the kubernetes services and act as a reverse proxy.
+
+The final step is to configure DNS through CNames:
+
+```terraform
+resource "cloudflare_record" "grafana" {
+  zone_id = cloudflare_zone.monitoring.id
+  name    = "grafana"
+  value   = "${cloudflare_tunnel.monitoring.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "prometheus" {
+  zone_id = cloudflare_zone.monitoring.id
+  name    = "prometheus"
+  value   = "${cloudflare_tunnel.monitoring.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+```
+
+In order for our Cloudflare tunnel to have access to the private cluster I deploy through Terraform the required Cloudflared application with the required configuration very easilly through resource interpolation and referencing:
+
+```
+resource "kubernetes_deployment" "cloudflared_monitoring" {
+  #ts:skip=AC-K8-NS-PO-M-0122 False positive as security context is added
+  provider = kubernetes.monitoring
+  metadata {
+    name = "cloudflared"
+    labels = {
+      app = "cloudflared"
+    }
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+  spec {
+    selector {
+      match_labels = {
+        app = "cloudflared"
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = "cloudflared"
+        }
+      }
+      spec {
+        volume {
+          name = "config"
+          config_map {
+            name = "cloudflared"
+          }
+        }
+        container {
+          image             = "cloudflare/cloudflared:latest"
+          name              = "cloudflaredcontainer"
+          image_pull_policy = "Always"
+          args              = ["tunnel", "--config", "/etc/cloudflared/config/config.yaml", "run", "--token=${cloudflare_tunnel.monitoring.tunnel_token}"]
+          security_context {
+            allow_privilege_escalation = false
+          }
+          volume_mount {
+            name       = "config"
+            mount_path = "/etc/cloudflared/config"
+            read_only  = true
+          }
+          liveness_probe {
+            http_get {
+              path = "/ready"
+              port = "2000"
+            }
+            failure_threshold     = 1
+            initial_delay_seconds = 10
+            period_seconds        = 10
+          }
+        }
+        security_context {
+          run_as_user = 1000
+        }
+        restart_policy                   = "Always"
+        termination_grace_period_seconds = 60
+      }
+    }
+  }
+}
+
+resource "kubernetes_config_map" "cloudflared" {
+  provider = kubernetes.monitoring
+  metadata {
+    name      = "cloudflared"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+
+  data = {
+    "config.yaml" = <<EOT
+# Name of the tunnel you want to run
+tunnel: ${cloudflare_tunnel.monitoring.id}
+# credentials-file: /etc/cloudflared/creds/credentials.json
+# Serves the metrics server under /metrics and the readiness server under /ready
+metrics: 0.0.0.0:2000
+# Autoupdates applied in a k8s pod will be lost when the pod is removed or restarted, so
+# autoupdate doesn't make sense in Kubernetes. However, outside of Kubernetes, we strongly
+# recommend using autoupdate.
+no-autoupdate: true
+EOT
+  }
+}
+
+```
 
 ## Additional Information
 
