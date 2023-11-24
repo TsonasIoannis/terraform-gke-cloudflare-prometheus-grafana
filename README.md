@@ -7,7 +7,7 @@ The end goal is a fully functional monitoring and observability platform that ca
 
 1. Creating a Google Cloud Platform Project via CLI
 
-### Prerequisites
+### GCP Prerequisites
 
 Before creating a GCP project using the CLI, ensure you have the following:
 
