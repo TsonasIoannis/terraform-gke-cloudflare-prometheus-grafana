@@ -278,7 +278,8 @@ resource "google_container_cluster" "monitoring" {
 }
 ```
 
-One important segment is the `remove_default_node_pool = true` and `initial_node_count = 1` which allows us to manage all the nodes from our configuration. In order to make the cluster private, which means that nodes only have internal IP addresses, which means that nodes and Pods are isolated from the internet by default we need the following sections `master_authorized_networks_config` as empty and the `private_cluster_config` to configure the nodes with private endpoints to the VPC.
+One important segment is the `remove_default_node_pool = true` and `initial_node_count = 1` which allows us to manage all the nodes from our configuration.
+In order to make the cluster private, which means that nodes only have internal IP addresses, which means that nodes and Pods are isolated from the internet by default we need the following sections `master_authorized_networks_config` as empty and the `private_cluster_config` to configure the nodes with private endpoints to the VPC.
 
 The actual node pool is managed from this resource:
 
