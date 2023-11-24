@@ -656,6 +656,38 @@ EOT
 
 ```
 
+After this step you should be able to access the Prometheus and Grafana at the url `prometheus.example.com` and `grafana.example.com`.
+
+You should see the Cloudflare login screen.
+
+### Prometheus Exporters
+
+Great the initial setup is done! Now for some real cases of monitoring systems.
+To do that we need to deploy some Prometheus exporters. As an example I will deploy a GitHub and Azure DevOps exporters. After they are deployed they provide metrics for the Prometheus server to scrape.
+
+The deployments can be configured using environment variables.
+However since the environment variables include sensitive tokens we can utilise Terraform with Kubernetes secrets as such:
+
+```terraform
+resource "kubernetes_secret" "exporters" {
+  provider = kubernetes.monitoring
+  metadata {
+    name      = "exporters"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+  data = {
+    azdo_pat   = var.AZDO_PERSONAL_ACCESS_TOKEN
+    github_pat = var.TERRAFORM_GITHUB_PROVIDER
+  }
+}
+```
+
+The `AZDO_PERSONAL_ACCESS_TOKEN` and `TERRAFORM_GITHUB_PROVIDER` can also be sourced through GitHub Secrets.
+
+In order to expose the exporter pods to the prometheus server we need to provision some services.
+We can utilise `annotations = { "prometheus.io/scrape" : "true" }` option in the services to enable discovery.
+Alternatively we can define `additionalJobs` in the prometheus template values.
+
 ## Additional Information
 
 - **Documentation**: For detailed information on using Terraform with GCP, refer to the [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs).
