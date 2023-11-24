@@ -17,8 +17,10 @@ variable "allowed_users" {
 }
 
 variable "AZDO_PERSONAL_ACCESS_TOKEN" {
-  type = string
+  type    = string
+  default = "example_token"
 }
 variable "TERRAFORM_GITHUB_PROVIDER" {
-  type = string
+  type    = string
+  default = "example_token"
 }
