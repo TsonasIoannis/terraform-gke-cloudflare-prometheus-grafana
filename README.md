@@ -149,7 +149,7 @@ Ensure you're referencing these secrets correctly within your workflows or actio
 
 I will be using Cloudflare to tie the monitoring platform to a domain name and also provide Zero Trust access to selected users.
 
-### Prerequisites.
+### Prerequisites
 
 A domain name is required. You can purchase a domain name either through Cloudflare or any other registar.
 
@@ -172,7 +172,7 @@ Permission can be updated after creation as needed by Terraform with the minimum
 
 ### Step 4: Set GitHub Secrets
 
-Set the token and account id secrets in GitHub so the Terraform workflow can utilise them.
+Set the token and account ID secrets in GitHub so the Terraform workflow can utilise them.
 
 ## Getting Started
 
@@ -516,7 +516,7 @@ The next step is to define the Access Policy for each application.
 Access policies for this apllciation fall under two categories User and Service policies.
 User policies can be defined to limit which users can be identified successfully, whereas Service policies give access to service applications e.g. Terraform.
 
-The next step is to define a Cloudflare tunnel to link the private cluster to our domain system without exposing traffic to the public Internet. For that we do:
+The next step is to define a Cloudflare tunnel to link the private cluster to our domain system without exposing traffic to the public internet. For that we do:
 
 ```terraform
 resource "cloudflare_tunnel" "monitoring" {
@@ -569,7 +569,7 @@ resource "cloudflare_record" "prometheus" {
 
 In order for our Cloudflare tunnel to have access to the private cluster I deploy through Terraform the required Cloudflared application with the required configuration very easilly through resource interpolation and referencing:
 
-```
+```terraform
 resource "kubernetes_deployment" "cloudflared_monitoring" {
   #ts:skip=AC-K8-NS-PO-M-0122 False positive as security context is added
   provider = kubernetes.monitoring
@@ -656,7 +656,7 @@ EOT
 
 ```
 
-After this step you should be able to access the Prometheus and Grafana at the url `prometheus.example.com` and `grafana.example.com`.
+After this step you should be able to access the Prometheus and Grafana at the URL `prometheus.example.com` and `grafana.example.com`.
 
 You should see the Cloudflare login screen.
 
@@ -708,7 +708,7 @@ provider "grafana" {
 ```
 
 There are some moving pieces we can configure here.
-The url is set to the subdomain defined in Cloudflare.
+The URL is set to the subdomain defined in Cloudflare.
 We can also use the admin account defined for authentication.
 However, this configuration alone will fail as we have put grafana behind Cloudflare Zero Trust.
 To authenticate with Cloudflare we include the access token which we have already define to allow access in some HTTP headers
