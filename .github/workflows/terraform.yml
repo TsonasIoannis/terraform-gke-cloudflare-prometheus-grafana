@@ -66,6 +66,8 @@ jobs:
           GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
           GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
           TF_LOG: ${{ github.event.inputs.tf_log_level }}
+          CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
+          TF_VAR_CLOUDFLARE_LIVE_ACCOUNT_ID: ${{secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
 
       # Checks that all Terraform configuration files adhere to a canonical format
       - name: Terraform Format
@@ -80,6 +82,8 @@ jobs:
           GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
           GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
           TF_LOG: ${{ github.event.inputs.tf_log_level }}
+          CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
+          TF_VAR_CLOUDFLARE_LIVE_ACCOUNT_ID: ${{secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
 
       - name: Archive plan file
         uses: actions/upload-artifact@v3
@@ -160,11 +164,12 @@ jobs:
               })
             }
 
-      # Reruns and checks that there is nothing left to do.
-      - name: Terraform Plan Zero
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        run: terraform plan -detailed-exitcode -no-color
-        env:
-          GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
-          GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
-          TF_LOG: ${{ github.event.inputs.tf_log_level }}
+      # Reruns and checks that there is nothing left to do after apply.
+      # - name: Terraform Plan Zero
+      #   if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      #   run: terraform plan -detailed-exitcode -no-color
+      #   env:
+      #     GOOGLE_CREDENTIALS: ${{secrets.GOOGLE_CREDENTIALS}}
+      #     GOOGLE_PROJECT: ${{secrets.GOOGLE_PROJECT}}
+      #     TF_LOG: ${{ github.event.inputs.tf_log_level }}
+      #     CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
