@@ -688,6 +688,37 @@ In order to expose the exporter pods to the prometheus server we need to provisi
 We can utilise `annotations = { "prometheus.io/scrape" : "true" }` option in the services to enable discovery.
 Alternatively we can define `additionalJobs` in the prometheus template values.
 
+### Grafana Provider
+
+We can also use Terraform to provision Grafana resources.
+The configuration is:
+
+```terraform
+provider "grafana" {
+  alias = "monitoring"
+
+  url  = "https://grafana.example.com/"
+  auth = "admin:${random_password.grafana.result}"
+
+  http_headers = {
+    "CF-Access-Client-Id"     = cloudflare_access_service_token.terraform.client_id,
+    "CF-Access-Client-Secret" = cloudflare_access_service_token.terraform.client_secret,
+  }
+}
+```
+
+There are some moving pieces we can configure here.
+The url is set to the subdomain defined in Cloudflare.
+We can also use the admin account defined for authentication.
+However, this configuration alone will fail as we have put grafana behind Cloudflare Zero Trust.
+To authenticate with Cloudflare we include the access token which we have already define to allow access in some HTTP headers
+
+### Grafana Resources
+
+Using the provider we can manage a wide range of Grafana resources.
+
+One example is defining users, folders and dashboards
+
 ## Additional Information
 
 - **Documentation**: For detailed information on using Terraform with GCP, refer to the [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs).
