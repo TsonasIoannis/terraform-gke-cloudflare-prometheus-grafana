@@ -86,7 +86,7 @@ jobs:
           TF_VAR_CLOUDFLARE_LIVE_ACCOUNT_ID: ${{secrets.CLOUDFLARE_LIVE_ACCOUNT_ID }}
 
       - name: Archive plan file
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: terraform-plan
